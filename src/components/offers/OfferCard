@@ -1,0 +1,259 @@
+import { useState } from 'react'
+import { ChevronDown, ChevronUp, Check, Copy } from '@tamagui/lucide-icons'
+import { 
+  YStack, 
+  XStack, 
+  Text, 
+  Button,
+  Card,
+  Sheet,
+  Separator,
+  View
+} from 'tamagui'
+
+interface OfferProps {
+  partner: string
+  geo: string
+  language?: string
+  sources: string[]
+  funnels: string[]
+  status: 'priority' | 'inactive' | 'tested'
+  network: {
+    cpa: string
+    crg: string
+    ppl: string
+    pplPercent: string
+  }
+  brand: {
+    cpa: string
+    crg: string
+    ppl: string
+    pplPercent: string
+  }
+  conversionRate: number
+  activeDeals: number
+  monthlyVolume: string
+}
+
+const StatusPill = ({ 
+  status,
+  onStatusChange 
+}: {
+  status: string
+  onStatusChange: (newStatus: 'priority' | 'inactive' | 'tested') => void
+}) => {
+  const [isOpen, setIsOpen] = useState(false)
+
+  const getStatusColor = (s: string) => {
+    switch (s) {
+      case 'priority': return { bg: '$purple3', color: '$purple11' }
+      case 'inactive': return { bg: '$red3', color: '$red11' }
+      case 'tested': return { bg: '$green3', color: '$green11' }
+      default: return { bg: '$gray3', color: '$gray11' }
+    }
+  }
+
+  return (
+    <View>
+      <Button
+        size="$2"
+        {...getStatusColor(status)}
+        pressStyle={{ opacity: 0.8 }}
+        borderRadius="$10"
+        onPress={(e) => {
+          e.stopPropagation()
+          setIsOpen(true)
+        }}
+        textTransform="capitalize"
+      >
+        {status}
+      </Button>
+
+      <Sheet
+        modal
+        open={isOpen}
+        onOpenChange={setIsOpen}
+        snapPoints={[25]}
+        dismissOnSnapToBottom
+      >
+        <Sheet.Frame padding="$4">
+          <Sheet.ScrollView>
+            <YStack space="$3">
+              {['priority', 'inactive', 'tested'].map((s) => (
+                <Button
+                  key={s}
+                  size="$4"
+                  themed
+                  alignItems="center"
+                  justifyContent="space-between"
+                  onPress={(e) => {
+                    e.stopPropagation()
+                    onStatusChange(s as 'priority' | 'inactive' | 'tested')
+                    setIsOpen(false)
+                  }}
+                  textTransform="capitalize"
+                >
+                  <Text>{s}</Text>
+                  {status === s && <Check size={16} />}
+                </Button>
+              ))}
+            </YStack>
+          </Sheet.ScrollView>
+        </Sheet.Frame>
+      </Sheet>
+    </View>
+  )
+}
+
+const PricingRows = ({ 
+  network,
+  brand 
+}: { 
+  network: OfferProps['network']
+  brand: OfferProps['brand']
+}) => {
+  const handleCopy = async (type: 'network' | 'brand') => {
+    const data = type === 'network' 
+      ? `Network: CPA €${network.cpa} + ${network.crg}% CRG | PPL €${network.ppl}/${network.pplPercent}%`
+      : `Brand: CPA €${brand.cpa} + ${brand.crg}% CRG | PPL €${brand.ppl}/${brand.pplPercent}%`
+    
+    await navigator.clipboard.writeText(data)
+  }
+
+  const PriceButton = ({ 
+    label, 
+    cpa, 
+    crg, 
+    ppl, 
+    pplPercent,
+    onPress 
+  }: {
+    label: string
+    cpa: string
+    crg: string
+    ppl: string
+    pplPercent: string
+    onPress: () => void
+  }) => (
+    <Button
+      size="$3"
+      bordered
+      alignItems="center"
+      justifyContent="space-between"
+      onPress={(e) => {
+        e.stopPropagation()
+        onPress()
+      }}
+      pressStyle={{ opacity: 0.8 }}
+      backgroundColor="$background"
+    >
+      <Text color="$gray11">{label}</Text>
+      <XStack space="$2" alignItems="center">
+        <Text>€{cpa}+{crg}%</Text>
+        <XStack
+          backgroundColor="$gray3"
+          paddingHorizontal="$2"
+          paddingVertical="$1"
+          borderRadius="$10"
+        >
+          <Text size="$2" color="$gray11">€{ppl}/{pplPercent}%</Text>
+        </XStack>
+      </XStack>
+    </Button>
+  )
+
+  return (
+    <YStack space="$2">
+      <PriceButton
+        label="Network"
+        cpa={network.cpa}
+        crg={network.crg}
+        ppl={network.ppl}
+        pplPercent={network.pplPercent}
+        onPress={() => handleCopy('network')}
+      />
+      <PriceButton
+        label="Brand"
+        cpa={brand.cpa}
+        crg={brand.crg}
+        ppl={brand.ppl}
+        pplPercent={brand.pplPercent}
+        onPress={() => handleCopy('brand')}
+      />
+    </YStack>
+  )
+}
+
+export const OfferCard = ({ offer }: { offer: OfferProps }) => {
+  const [expanded, setExpanded] = useState(false)
+  const [currentStatus, setCurrentStatus] = useState(offer.status)
+
+  return (
+    <Card elevate bordered>
+      <Card.Header onPress={() => setExpanded(!expanded)} padding="$4">
+        <YStack space="$3">
+          <XStack justifyContent="space-between" alignItems="flex-start">
+            <YStack>
+              <XStack space="$2" alignItems="center" flexWrap="wrap">
+                <Text fontWeight="500" color="$gray12">{offer.partner}</Text>
+                <Text color="$gray11">•</Text>
+                <Text color="$gray11">{offer.geo}</Text>
+                {offer.language && (
+                  <>
+                    <Text color="$gray11">•</Text>
+                    <Text color="$gray11">{offer.language}</Text>
+                  </>
+                )}
+              </XStack>
+              <Text size="$3" color="$gray11" marginTop="$1">
+                Sources: {offer.sources.join(', ')}
+              </Text>
+            </YStack>
+            <StatusPill status={currentStatus} onStatusChange={setCurrentStatus} />
+          </XStack>
+          
+          <Text size="$3" color="$gray11">
+            Funnels: {offer.funnels.join(', ')}
+          </Text>
+
+          <PricingRows network={offer.network} brand={offer.brand} />
+        </YStack>
+      </Card.Header>
+      
+      {expanded && (
+        <>
+          <Separator />
+          <Card.Footer padding="$4">
+            <YStack space="$4" width="100%">
+              <XStack justifyContent="space-between">
+                <YStack space="$1">
+                  <Text size="$2" color="$gray11">Conversion Rate</Text>
+                  <Text fontWeight="500">{offer.conversionRate}%</Text>
+                </YStack>
+                <YStack space="$1">
+                  <Text size="$2" color="$gray11">Active Deals</Text>
+                  <Text fontWeight="500">{offer.activeDeals}</Text>
+                </YStack>
+                <YStack space="$1">
+                  <Text size="$2" color="$gray11">Monthly Volume</Text>
+                  <Text fontWeight="500">{offer.monthlyVolume}</Text>
+                </YStack>
+              </XStack>
+
+              <XStack 
+                space="$2" 
+                backgroundColor="$gray3"
+                padding="$3"
+                borderRadius="$4"
+              >
+                <Button flex={1} variant="outlined" size="$3">Create Deal</Button>
+                <Button flex={1} variant="outlined" size="$3">Share Offer</Button>
+                <Button flex={1} variant="outlined" size="$3">Edit</Button>
+              </XStack>
+            </YStack>
+          </Card.Footer>
+        </>
+      )}
+    </Card>
+  )
+}
